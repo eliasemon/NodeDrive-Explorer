@@ -18,6 +18,10 @@ let html = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Explorer</title>
   <style>
+    a {
+      text-decoration: none;
+    }
+
     .folder {
       width: 100px;
       height: 70px;
@@ -50,71 +54,84 @@ let html = `
       font-size: 14px;
       color: #333;
     }
+
+    .group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .heading {
+      width: 100%;
+      margin: 20px 0;
+    }
   </style>
 </head>
 <body>
 `;
 
 const lastHtml = `
+</div>
 </body>
 </html>`;
 
 let driveLetter = "";
 
 folderToStatic = (files) => {
-    files.forEach((v) => {
-        if (
-            v.isDirectory() &&
-            v.name !== "node_modules" &&
-            v.name !== "$RECYCLE.BIN" &&
-            v.name !== "System Volume Information"
-        ) {
-            const path = `${v.path}\\${v.name}`;
-            const routePath = `/${v.path.slice(0, 1)}/${v.name.replaceAll(" ", "_")}`;
-            app.use(
-                routePath,
-                express.static(path),
-                serveIndex(path, { icons: true })
-            );
-            if(v.path !== driveLetter){
-                driveLetter = v.path;
-                html += `
-                <h1>Drive:: ${v.path.slice(0, 1)}</h1>
+  files.forEach((v) => {
+    if (
+      v.isDirectory() &&
+      v.name !== "node_modules" &&
+      v.name !== "$RECYCLE.BIN" &&
+      v.name !== "System Volume Information"
+    ) {
+      const path = `${v.path}\\${v.name}`;
+      const routePath = `/${v.path.slice(0, 1)}/${v.name.replaceAll(" ", "_")}`;
+      app.use(
+        routePath,
+        express.static(path),
+        serveIndex(path, { icons: true })
+      );
+      if (v.path !== driveLetter) {
+        driveLetter = v.path;
+        html += `
+                <div class="heading">
+                  <h1>Drive:: ${v.path.slice(0, 1)}</h1>
+                </div>
+                <div class="group">
                 `
-            }
+      }
 
-            html += `
-            <br>
-            <br>
+      html += `
             <a href="${routePath}">  
-                <div class="folder" >F</div>
+                <div class="folder" >${driveLetter.slice(0, 1)}</div>
                 <p class="file-name" > ${v.name} </p>
             </a>
             `;
-        }
-    });
+    }
+  });
 };
 
 const folderLoadFn = (path) => {
-    fs.readdir(path, { withFileTypes: true }, (err, files) => {
-        if (!err) {
-            folderToStatic(files);
-        }
-    });
+  fs.readdir(path, { withFileTypes: true }, (err, files) => {
+    if (!err) {
+      folderToStatic(files);
+    }
+  });
 };
 
 const diskLoadfn = async () => {
-    try {
-        const disks = await getDiskInfo();
-        disks.forEach((disk) => {
-            if (disk.mounted !== "C:") {
-                folderLoadFn(disk.mounted);
-            }
-        });
-        
-    } catch (e) {
-        console.error(e);
-    }
+  try {
+    const disks = await getDiskInfo();
+    disks.forEach((disk) => {
+      if (disk.mounted !== "C:") {
+        folderLoadFn(disk.mounted);
+      }
+    });
+
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 diskLoadfn().then(() => {
